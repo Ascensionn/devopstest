@@ -1,0 +1,88 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum ItemType {
+  important_date
+  follow_up
+}
+
+enum ItemStatus {
+  active
+  done
+}
+
+enum DraftTone {
+  warm
+  casual
+  formal
+}
+
+model User {
+  id                 String   @id @default(cuid())
+  email              String   @unique
+  name               String?
+  timezone           String   @default("UTC")
+  morningBriefEnabled Boolean @default(true)
+  morningBriefTime   String   @default("08:00")
+  people             Person[]
+  items              Item[]
+  drafts             Draft[]
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}
+
+model Person {
+  id                String   @id @default(cuid())
+  userId            String
+  name              String
+  relationshipLabel String
+  notes             String?
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items             Item[]
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model Item {
+  id              String     @id @default(cuid())
+  userId          String
+  personId        String?
+  type            ItemType
+  title           String
+  description     String?
+  dueAt           DateTime
+  recurringYearly Boolean    @default(false)
+  status          ItemStatus @default(active)
+  snoozedUntil    DateTime?
+  user            User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  person          Person?    @relation(fields: [personId], references: [id], onDelete: SetNull)
+  drafts          Draft[]
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  @@index([userId, dueAt])
+  @@index([personId])
+  @@index([status])
+}
+
+model Draft {
+  id        String   @id @default(cuid())
+  userId    String
+  itemId    String
+  tone      DraftTone
+  text      String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  item      Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@index([userId, itemId])
+}
